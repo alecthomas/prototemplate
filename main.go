@@ -12,9 +12,9 @@ import (
 	"unicode/utf8"
 
 	"code.google.com/p/goprotobuf/proto"
+	"github.com/alecthomas/kingpin"
 	"github.com/alecthomas/template"
 	"github.com/robertkrimen/otto"
-	"gopkg.in/alecthomas/kingpin.v1"
 
 	"github.com/alecthomas/prototemplate/gen/google/protobuf"
 )
@@ -22,14 +22,43 @@ import (
 var (
 	TemplateDir = ""
 
-	listFlag        = kingpin.Flag("list", "List builtin generators.").Dispatch(listGenerators).Bool()
+	listFlag     = kingpin.Flag("list", "List builtin generators.").Dispatch(listGenerators).Bool()
+	builtinsFlag = kingpin.Flag("builtins", "List builtin functions.").Dispatch(listBuiltins).Bool()
+
 	includesFlag    = kingpin.Flag("include", "List of include paths to pass to protoc.").Short('I').PlaceHolder("DIR").Strings()
 	templateDirFlag = kingpin.Flag("templates", "Root path to templates.").Default(TemplateDir).ExistingDir()
 	outputFlag      = kingpin.Flag("output", "File to output generated template source to.").Short('o').PlaceHolder("FILE").String()
-	sourceArg       = kingpin.Arg("proto", "Protocol buffer definition to compile.").Required().ExistingFile()
-	templateArg     = kingpin.Arg("template", "Template file, or name of a builtin generator.").Required().String()
-	scriptArg       = kingpin.Arg("script", "A JavaScript file defining template helper functions.").ExistingFile()
+
+	sourceArg   = kingpin.Arg("proto", "Protocol buffer definition to compile.").Required().ExistingFile()
+	templateArg = kingpin.Arg("template", "Template file, or name of a builtin generator.").Required().String()
+	scriptArg   = kingpin.Arg("script", "A JavaScript file defining template helper functions.").ExistingFile()
 )
+
+const builtins = `
+function IsOptional(t) {
+  return t.Label == Labels.LABEL_OPTIONAL;
+}
+
+function IsRequired(f) {
+  return f.Label == Labels.LABEL_REQUIRED;
+}
+
+function IsEnum(f) {
+  return f.Type == Types.TYPE_ENUM;
+}
+
+function IsRepeated(f) {
+  return f.Label == Labels.LABEL_REPEATED;
+}
+
+function IsMessage(f) {
+  return f.Type == Types.TYPE_MESSAGE;
+}
+
+function FieldTag(f) {
+  return (f.Number << 3) | tagTypeMap[f.Type];
+}
+`
 
 func listGenerators(*kingpin.ParseContext) error {
 	files, err := ioutil.ReadDir(*templateDirFlag)
@@ -43,6 +72,28 @@ func listGenerators(*kingpin.ParseContext) error {
 	}
 	os.Exit(0)
 	return nil
+}
+
+func listBuiltins(*kingpin.ParseContext) error {
+	vm := otto.New()
+	_, err := vm.Run(builtins)
+	if err != nil {
+		return err
+	}
+	helpers, _ := vm.Run(`Function('return this')();`)
+	object := helpers.Object()
+	for _, name := range object.Keys() {
+		if isExported(name) {
+			fmt.Println(name)
+		}
+	}
+	os.Exit(0)
+	return nil
+}
+
+func isExported(name string) bool {
+	r, _ := utf8.DecodeRuneInString(name)
+	return unicode.IsUpper(r)
 }
 
 // Regenerate protobuf source with:
@@ -117,6 +168,8 @@ func buildFunctions() template.FuncMap {
 		return funcs
 	}
 	vm := otto.New()
+	_, err := vm.Run(builtins)
+	kingpin.FatalIfError(err, "")
 	injectProtoSymbols(vm)
 	source, err := ioutil.ReadFile(*scriptArg)
 	kingpin.FatalIfError(err, "")
@@ -130,8 +183,7 @@ func buildFunctions() template.FuncMap {
 	}
 	object := helpers.Object()
 	for _, name := range object.Keys() {
-		r, _ := utf8.DecodeRuneInString(name)
-		if !unicode.IsUpper(r) {
+		if isExported(name) {
 			continue
 		}
 		f, _ := object.Get(name)

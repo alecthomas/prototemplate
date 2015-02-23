@@ -121,26 +121,6 @@ function OptionalFieldDecl(f) {
   return name + ": " + type + "?";
 }
 
-function IsOptional(t) {
-  return t.Label == Labels.LABEL_OPTIONAL;
-}
-
-function IsRequired(f) {
-  return f.Label == Labels.LABEL_REQUIRED;
-}
-
-function IsEnum(f) {
-  return f.Type == Types.TYPE_ENUM;
-}
-
-function IsRepeated(f) {
-  return f.Label == Labels.LABEL_REPEATED;
-}
-
-function IsMessage(f) {
-  return f.Type == Types.TYPE_MESSAGE;
-}
-
 function TypeDecl(t) {
   switch (t.Type) {
   case Types.TYPE_ENUM, Types.TYPE_MESSAGE:
@@ -162,8 +142,4 @@ function TypeToProtocolBuffer(t) {
 
 function FieldToVar(f) {
   return Var(f.Name) + (f.Label == Labels.LABEL_OPTIONAL ? "!" : "") + (f.Type == Types.TYPE_ENUM ? ".rawValue" : "");
-}
-
-function FieldTag(f) {
-  return (f.Number << 3) | tagTypeMap[f.Type];
 }

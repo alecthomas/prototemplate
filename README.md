@@ -24,7 +24,7 @@ The above incantation allows prototemplate to find its builtin templates.
 
 ## Example
 
-The following example will list all messages in all files while stripping any leading package names present.
+The following example will list all messages and fields in all files while stripping any leading package names present.
 
 Protocol buffer definition (test.proto):
 
@@ -80,7 +80,12 @@ And invoke the utility like so:
 ```
 $ prototemplate test.proto test.got test.js
 User
+  name = 1
+  age = 2
+  roles = 3
 Group
+  owner = 1
+  users = 2
 ```
 
 ## Usage
@@ -91,13 +96,17 @@ usage: prototemplate [<flags>] <proto> <template> [<script>]
 
 Flags:
   --help             Show help.
+  --templates=/Users/alec/.go/src/github.com/alecthomas/prototemplate/templates
+                     Root path to templates.
+  --list             List builtin generators.
+  --builtins         List builtin functions.
   -I, --include=DIR  List of include paths to pass to protoc.
-  -o, --output=FILE  File to output generated template output to.
+  -o, --output=FILE  File to output generated template source to.
 
 Args:
   <proto>     Protocol buffer definition to compile.
-  <template>  Template to pass proto descriptor set to.
-  [<script>]  A JavaScript script defining template helper functions.
+  <template>  Template file, or name of a builtin generator.
+  [<script>]  A JavaScript file defining template helper functions.
 ```
 
 ## Included templates
