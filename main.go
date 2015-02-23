@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -21,13 +22,28 @@ import (
 var (
 	TemplateDir = ""
 
+	listFlag        = kingpin.Flag("list", "List builtin generators.").Dispatch(listGenerators).Bool()
 	includesFlag    = kingpin.Flag("include", "List of include paths to pass to protoc.").Short('I').PlaceHolder("DIR").Strings()
 	templateDirFlag = kingpin.Flag("templates", "Root path to templates.").Default(TemplateDir).ExistingDir()
 	outputFlag      = kingpin.Flag("output", "File to output generated template source to.").Short('o').PlaceHolder("FILE").String()
 	sourceArg       = kingpin.Arg("proto", "Protocol buffer definition to compile.").Required().ExistingFile()
-	templateArg     = kingpin.Arg("template", "Template file or name to pass proto descriptor set to.").Required().String()
-	scriptArg       = kingpin.Arg("script", "A JavaScript script defining template helper functions.").ExistingFile()
+	templateArg     = kingpin.Arg("template", "Template file, or name of a builtin generator.").Required().String()
+	scriptArg       = kingpin.Arg("script", "A JavaScript file defining template helper functions.").ExistingFile()
 )
+
+func listGenerators(*kingpin.ParseContext) error {
+	files, err := ioutil.ReadDir(*templateDirFlag)
+	if err != nil {
+		return fmt.Errorf("invalid template dir '%s': %s", *templateDirFlag, err)
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			fmt.Println(file.Name())
+		}
+	}
+	os.Exit(0)
+	return nil
+}
 
 // Regenerate protobuf source with:
 // protoc --go_out=./gen -I/usr/local/Cellar/protobuf/2.6.0/include \

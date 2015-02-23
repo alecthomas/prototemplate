@@ -1,0 +1,10 @@
+{{with .FileDescriptorSet}}\
+{{range .File}}\
+{{range .MessageType}}\
+{{.Name|StripPackage}}
+{{range .Field}}\
+  {{.Name}} = {{.Number}}
+{{end}}\
+{{end}}\
+{{end}}\
+{{end}}\

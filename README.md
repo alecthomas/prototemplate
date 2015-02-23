@@ -65,6 +65,9 @@ And this template (test.got):
 {{range .File}}\
 {{range .MessageType}}\
 {{.Name|StripPackage}}
+{{range .Field}}\
+  {{.Name}} = {{.Number}}
+{{end}}\
 {{end}}\
 {{end}}\
 {{end}}\
@@ -76,6 +79,8 @@ And invoke the utility like so:
 
 ```
 $ prototemplate test.proto test.got test.js
+User
+Group
 ```
 
 ## Usage
