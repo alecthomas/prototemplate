@@ -61,9 +61,9 @@ function FieldTag(f) {
 `
 
 func listGenerators(*kingpin.ParseContext) error {
-	files, err := ioutil.ReadDir(*templateDirFlag)
+	files, err := ioutil.ReadDir(TemplateDir)
 	if err != nil {
-		return fmt.Errorf("invalid template dir '%s': %s", *templateDirFlag, err)
+		return fmt.Errorf("invalid template dir '%s': %s", TemplateDir, err)
 	}
 	for _, file := range files {
 		if file.IsDir() {
