@@ -1,0 +1,19 @@
+package test;
+
+// Defines what role a user has.
+enum Role {
+  EXECUTIVE = 1;
+  MANAGER = 2;
+  EMPLOYEE = 3;
+}
+
+message User {
+  required string name = 1;
+  optional int64 age = 2 [default=18];
+  repeated Role roles = 3;
+}
+
+message Group {
+  required User owner = 1;
+  repeated User users = 2;
+}
