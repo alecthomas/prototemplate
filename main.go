@@ -183,7 +183,7 @@ func buildFunctions() template.FuncMap {
 	}
 	object := helpers.Object()
 	for _, name := range object.Keys() {
-		if isExported(name) {
+		if !isExported(name) {
 			continue
 		}
 		f, _ := object.Get(name)
