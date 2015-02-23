@@ -38,25 +38,6 @@ protoTypeMap[Types.TYPE_SFIXED64] = "SFixed64";
 protoTypeMap[Types.TYPE_SINT32] = "SInt32";
 protoTypeMap[Types.TYPE_SINT64] = "SInt64";
 
-var tagTypeMap = {}
-tagTypeMap[Types.TYPE_DOUBLE] = 1;
-tagTypeMap[Types.TYPE_FLOAT] = 5;
-tagTypeMap[Types.TYPE_INT64] = 0;
-tagTypeMap[Types.TYPE_UINT64] = 0;
-tagTypeMap[Types.TYPE_INT32] = 0;
-tagTypeMap[Types.TYPE_FIXED64] = 1;
-tagTypeMap[Types.TYPE_FIXED32] = 5;
-tagTypeMap[Types.TYPE_BOOL] = 0;
-tagTypeMap[Types.TYPE_STRING] = 2;
-tagTypeMap[Types.TYPE_MESSAGE] = 2;
-tagTypeMap[Types.TYPE_BYTES] = 2;
-tagTypeMap[Types.TYPE_UINT32] = 0;
-tagTypeMap[Types.TYPE_ENUM] = 0;
-tagTypeMap[Types.TYPE_SFIXED32] = 5;
-tagTypeMap[Types.TYPE_SFIXED64] = 1;
-tagTypeMap[Types.TYPE_SINT32] = 0;
-tagTypeMap[Types.TYPE_SINT64] = 0;
-
 function FixRef(ref) {
   return Type(ref.replace(/^.*\./, ''));
 }

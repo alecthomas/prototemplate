@@ -35,6 +35,25 @@ var (
 )
 
 const builtins = `
+var tagTypeMap = {}
+tagTypeMap[Types.TYPE_DOUBLE] = 1;
+tagTypeMap[Types.TYPE_FLOAT] = 5;
+tagTypeMap[Types.TYPE_INT64] = 0;
+tagTypeMap[Types.TYPE_UINT64] = 0;
+tagTypeMap[Types.TYPE_INT32] = 0;
+tagTypeMap[Types.TYPE_FIXED64] = 1;
+tagTypeMap[Types.TYPE_FIXED32] = 5;
+tagTypeMap[Types.TYPE_BOOL] = 0;
+tagTypeMap[Types.TYPE_STRING] = 2;
+tagTypeMap[Types.TYPE_MESSAGE] = 2;
+tagTypeMap[Types.TYPE_BYTES] = 2;
+tagTypeMap[Types.TYPE_UINT32] = 0;
+tagTypeMap[Types.TYPE_ENUM] = 0;
+tagTypeMap[Types.TYPE_SFIXED32] = 5;
+tagTypeMap[Types.TYPE_SFIXED64] = 1;
+tagTypeMap[Types.TYPE_SINT32] = 0;
+tagTypeMap[Types.TYPE_SINT64] = 0;
+
 function IsOptional(t) {
   return t.Label == Labels.LABEL_OPTIONAL;
 }
@@ -75,11 +94,7 @@ func listGenerators(*kingpin.ParseContext) error {
 }
 
 func listBuiltins(*kingpin.ParseContext) error {
-	vm := otto.New()
-	_, err := vm.Run(builtins)
-	if err != nil {
-		return err
-	}
+	vm := buildVM()
 	helpers, _ := vm.Run(`Function('return this')();`)
 	object := helpers.Object()
 	for _, name := range object.Keys() {
@@ -160,6 +175,14 @@ func protoArgs() []string {
 	return args
 }
 
+func buildVM() *otto.Otto {
+	vm := otto.New()
+	injectProtoSymbols(vm)
+	_, err := vm.Run(builtins)
+	kingpin.FatalIfError(err, "")
+	return vm
+}
+
 type Func func(args ...interface{}) (interface{}, error)
 
 func buildFunctions() template.FuncMap {
@@ -167,10 +190,7 @@ func buildFunctions() template.FuncMap {
 	if *scriptArg == "" {
 		return funcs
 	}
-	vm := otto.New()
-	_, err := vm.Run(builtins)
-	kingpin.FatalIfError(err, "")
-	injectProtoSymbols(vm)
+	vm := buildVM()
 	source, err := ioutil.ReadFile(*scriptArg)
 	kingpin.FatalIfError(err, "")
 	script, err := vm.Compile(*scriptArg, source)
