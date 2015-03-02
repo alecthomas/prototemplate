@@ -13,8 +13,8 @@ import (
 
 	"code.google.com/p/goprotobuf/proto"
 	"github.com/alecthomas/kingpin"
+	"github.com/alecthomas/otto"
 	"github.com/alecthomas/template"
-	"github.com/robertkrimen/otto"
 
 	"github.com/alecthomas/prototemplate/gen/google/protobuf"
 )

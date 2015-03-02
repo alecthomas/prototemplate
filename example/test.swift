@@ -19,6 +19,7 @@ public enum Role: Int32 {
   case Employee = 3
 }
 
+
 public func == (lhs: User, rhs: User) -> Bool {
   if lhs.name != rhs.name { return false }
   if lhs.age != rhs.age { return false }
@@ -27,9 +28,11 @@ public func == (lhs: User, rhs: User) -> Bool {
 }
 
 public final class User: AbstractMessage, ProtobufMessage {
+
   public let name: String
   public let age: Int64?
   public let roles: [Role]
+
 
   public init(name: String, age: Int64? = 18, roles: [Role] = []) {
     self.name = name
@@ -98,6 +101,7 @@ public final class User: AbstractMessage, ProtobufMessage {
   }
 }
 
+
 public func == (lhs: Group, rhs: Group) -> Bool {
   if lhs.owner != rhs.owner { return false }
   if lhs.users != rhs.users { return false }
@@ -105,8 +109,10 @@ public func == (lhs: Group, rhs: Group) -> Bool {
 }
 
 public final class Group: AbstractMessage, ProtobufMessage {
+
   public let owner: User
   public let users: [User]
+
 
   public init(owner: User, users: [User] = []) {
     self.owner = owner
@@ -173,6 +179,120 @@ public final class Group: AbstractMessage, ProtobufMessage {
     return size
   }
 }
+
+
+public func == (lhs: GroupOrUser, rhs: GroupOrUser) -> Bool {
+  if lhs.user != rhs.user { return false }
+  if lhs.group != rhs.group { return false }
+  if lhs.role != rhs.role { return false }
+  return true
+}
+
+public final class GroupOrUser: AbstractMessage, ProtobufMessage {
+  public enum Union {
+    case User(User)
+    case Group(Group)
+  }
+
+  private static func unionFromElements(user: user: User? = nil, group: group: Group? = nil) -> Union? {
+    if let v = user { return .User(v) }
+    if let v = group { return .Group(v) }
+    return nil
+  }
+
+  private let user: User?
+  private let group: Group?
+  public let role: Role?
+
+  public var union: Union? {
+    return unionFromElements(user: user, group: group)
+  }
+
+  public init(role: Role? = nil, union: Union? = nil) {
+    self.role = role
+    if let unwrapped = union {
+      switch unwrapped {
+      case let .User(v):
+        user = v
+      case let .Group(v):
+        group = v
+      }
+    }
+    super.init()
+  }
+
+  public class func fromCodedInputStream(input: CodedInputStream) -> GroupOrUser? {
+    var user: User?
+    var group: Group?
+    var role: Role?
+
+    loop: while (true) {
+      var tag = input.readTag()
+      switch tag {
+      case 0:
+        break loop
+
+      case 10:
+        let oldLimit =  input.pushLimit(input.readRawVarint32())
+        if let v = User.fromCodedInputStream(input) {
+          user = v
+          input.popLimit(oldLimit)
+        } else {
+          return nil
+        }
+
+      case 18:
+        let oldLimit =  input.pushLimit(input.readRawVarint32())
+        if let v = Group.fromCodedInputStream(input) {
+          group = v
+          input.popLimit(oldLimit)
+        } else {
+          return nil
+        }
+
+      case 24:
+        let n = input.readEnum()
+        if let v = Role(rawValue: n) {
+          role = v
+        } else {
+          return nil
+        }
+
+
+      default:
+        return nil
+      }
+    }
+    let union = unionFromElements(user, group)
+    return GroupOrUser(role: role, union: union)
+  }
+
+  public class func fromData(data: NSData) -> GroupOrUser? {
+      var input = CodedInputStream(data: data)
+      return fromCodedInputStream(input)
+  }
+
+  public required init() {
+    fatalError("init() has not been implemented")
+  }
+
+  override public func isInitialized() -> Bool { return true }
+
+  override public func writeToCodedOutputStream(output: CodedOutputStream) {
+    if user != nil { output.writeMessage(1, value: user!) }
+    if group != nil { output.writeMessage(2, value: group!) }
+    if role != nil { output.writeEnum(3, value: role!.rawValue) }
+  }
+
+  override public func serializedSize() -> Int32 {
+    var size: Int32 = 0
+    if user != nil { size += user!.computeMessageSize(1); }
+    if group != nil { size += group!.computeMessageSize(2); }
+    if role != nil { size += role!.rawValue.computeEnumSize(3); }
+    return size
+  }
+}
+
 
 
 

@@ -18,10 +18,11 @@ public protocol ProtobufMessage: Message {
 public enum {{.Name|Type}}: Int32 {
 {{range .Value}}\
   case {{.Name|Const}} = {{.Number}}
-{{end}}}
 {{end}}\
+}
+{{end}}
 
-{{range .MessageType}}
+{{range $message := .MessageType}}\
 public func == (lhs: {{.Name|Type}}, rhs: {{.Name|Type}}) -> Bool {
 {{range .Field}}\
   if lhs.{{.Name|Var}} != rhs.{{.Name|Var}} { return false }
@@ -29,19 +30,66 @@ public func == (lhs: {{.Name|Type}}, rhs: {{.Name|Type}}) -> Bool {
   return true
 }
 
-public final class {{.Name|Type}}: AbstractMessage, ProtobufMessage {
-{{range .Field}}\
-  public let {{.|FieldDecl}}
+public final class {{.Name}}: AbstractMessage, ProtobufMessage {
+{{range $index, $oneof := $message.OneofDecl}}\
+  public enum {{.Name|Type}} {
+{{range $message.Field}}\
+{{if IsOneOfField $index .}}\
+    case {{.Name|Type}}({{.|RequiredFieldTypeDecl}})
+{{end}}\
+{{end}}\
+  }
+
+  private class func {{.Name}}FromElements({{range $fi, $field := OneOfFields $index $message.Field}}\
+{{if $fi}}, {{end}}\
+{{.Name|Var}}: {{.|RequiredFieldTypeDecl}}? = nil{{end}}) -> {{.Name|Type}}? {
+{{range $field := OneOfFields $index $message.Field}}\
+    if let v = {{.Name|Var}} { return .{{.Name|Type}}(v) }
+{{end}}\
+    return nil
+  }
 {{end}}
-  public init({{range $index, $field := .Field}}\
+{{range .Field}}\
+  {{if .OneofIndex}}private{{else}}public{{end}} let {{.|FieldDecl}}
+{{end}}
+{{if $message.OneofDecl}}\
+{{range $index, $oneof := $message.OneofDecl}}\
+  public var {{$oneof.Name|Var}}: {{$oneof.Name|Type}}? {
+    return {{$message.Name|Type}}.{{$oneof.Name}}FromElements({{range $fi, $field := OneOfFields $index $message.Field}}\
+{{if $fi}}, {{end}}\
+{{.Name|Var}}: {{.Name|Var}}\
+{{end}}\
+)
+  }
+{{end}}\
+{{end}}
+  public init({{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
 {{if $index}}, {{end}}\
-{{$field|FieldDecl}}\
+{{if .Type}}\
+{{.|FieldDecl}}\
 {{if .DefaultValue}} = {{.DefaultValue}}{{else if $field|IsOptional}}\
  = nil{{else if $field|IsRepeated}}\
  = []{{end}}\
-{{end}}) {
-{{range .Field}}    self.{{.Name|Var}} = {{.Name|Var}}
-{{end}}    super.init()
+{{else}}\
+{{.Name|Var}}: {{.Name|Type}}? = nil{{end}}\
+{{end}}\
+) {
+{{range .Field|FieldsWithoutOneOf}}\
+    self.{{.Name|Var}} = {{.Name|Var}}
+{{end}}\
+{{range $index, $oneof := $message.OneofDecl}}\
+    if let unwrapped = {{$oneof.Name|Var}} {
+      switch unwrapped {
+{{range $field := $message.Field}}\
+{{if IsOneOfField $index .}}\
+      case let .{{.Name|Type}}(v):
+        {{.Name|Var}} = v
+{{end}}\
+{{end}}\
+      }
+    }
+{{end}}\
+    super.init()
   }
 
   public class func fromCodedInputStream(input: CodedInputStream) -> {{.Name|Type}}? {
@@ -95,11 +143,21 @@ public final class {{.Name|Type}}: AbstractMessage, ProtobufMessage {
     if {{.Name|Var}} == nil { return nil }
 {{end}}\
 {{end}}\
+{{range $index, $oneof := .OneofDecl}}\
+    let {{.Name}} = {{$message.Name|Type}}.{{.Name}}FromElements({{range $fi, $field := OneOfFields $index $message.Field}}\
+{{if $fi}}, {{end}}\
+{{.Name|Var}}: {{.Name|Var}}\
+{{end}}\)
+{{end}}\
     return {{.Name|Type}}\
-({{range $index, $field := .Field}}\
+({{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
 {{if $index}}, {{end}}\
-{{$field.Name|Var}}: {{$field.Name|Var}}\
+{{if .Type}}\
+{{.Name|Var}}: {{.Name|Var}}\
 {{if .|IsRequired}}\!{{end}}\
+{{else}}\
+{{.Name}}: {{.Name}}\
+{{end}}\
 {{end}})
   }
 
@@ -128,8 +186,9 @@ size += {{.|ComputeSizeCall}};{{if .|IsOptional}} }{{end}}
     return size
   }
 }
-{{end}}
 
+
+{{end}}
 {{range .Service}}
 public protocol {{.Name}} {
 {{range .Method}}  func {{.Name}}(req: {{.InputType|FixRef}}) -> {{.OutputType|FixRef}}?

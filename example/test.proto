@@ -17,3 +17,11 @@ message Group {
   required User owner = 1;
   repeated User users = 2;
 }
+
+message GroupOrUser {
+  oneof union {
+    User user = 1;
+    Group group = 2;
+  }
+  optional Role role = 3;
+}
