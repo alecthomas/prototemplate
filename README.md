@@ -1,10 +1,25 @@
 # Process Protocol Buffer definitions with text templates and JavaScript functions
 
-This utility can be used to process a `.proto` source file with a [Go template](https://github.com/alecthomas/template) and associated JavaScript file.
+This tool is basically equivalent to any of the `protoc-gen-*` compilers
+except it is standalone, and uses JavaScript and [Go
+templates](https://github.com/alecthomas/template) to produce the generated
+files.
 
-1. The protocol buffer is compiled to a [FileDescriptorSet](https://code.google.com/p/protobuf/source/browse/trunk/src/google/protobuf/descriptor.proto).
-2. CamelCase functions defined in the JavaScript file are exposed to the template (same export rules as Go).
-3. The `FileDescriptorSet` is passed to the Go template as the top-level context.
+It works in the following way:
+
+1. The protocol buffer is compiled to a
+   [FileDescriptorSet](https://code.google.com/p/protobuf/source/browse/trunk/src/google/protobuf/descriptor.proto).
+2. CamelCase functions defined in the JavaScript file are exposed to the
+   template (same export rules as Go).
+3. The `FileDescriptorSet` is passed to the Go template as the top-level
+   context.
+
+## Why would you want to do this?
+
+If you have ever wanted to use protocol buffers for more than just the
+available code generation options. For example, another processor might be
+used to produce documentation in a custom Markdown format for your company. Or
+in a Wiki format for internal documentation.
 
 ## Installation
 
