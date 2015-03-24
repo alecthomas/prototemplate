@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -29,6 +30,7 @@ var (
 	templateDirFlag      = kingpin.Flag("templates", "Root path to templates.").Default(TemplateDir).ExistingDir()
 	printTemplateDirFlag = kingpin.Flag("print-template-dir", "Print default template directory.").Dispatch(printTemplateDir).Bool()
 	outputFlag           = kingpin.Flag("output", "File to output generated template source to.").Short('o').PlaceHolder("FILE").String()
+	setFlag              = kingpin.Flag("set", "Pass a variable to the JS and template context.").PlaceHolder("K=V").StringMap()
 
 	sourceArg   = kingpin.Arg("proto", "Protocol buffer definition to compile.").Required().ExistingFile()
 	templateArg = kingpin.Arg("template", "Template file, or name of a builtin generator.").Required().String()
@@ -165,11 +167,10 @@ func main() {
 
 	// bytes, _ := json.MarshalIndent(pb, "", "  ")
 	// fmt.Printf("%s\n", bytes)
-	context := &TemplateContext{
-		FileDescriptorSet: pb,
-		Types:             google_protobuf.FieldDescriptorProto_Type_value,
-		Labels:            google_protobuf.FieldDescriptorProto_Label_value,
-	}
+	context := parseUserVars()
+	context["FileDescriptorSet"] = pb
+	context["Types"] = google_protobuf.FieldDescriptorProto_Type_value
+	context["Labels"] = google_protobuf.FieldDescriptorProto_Label_value
 	err = tmpl.Execute(w, context)
 	kingpin.FatalIfError(err, "")
 }
@@ -187,11 +188,27 @@ func protoArgs() []string {
 	return args
 }
 
+func parseUserVars() map[string]interface{} {
+	out := map[string]interface{}{}
+	for k, jv := range *setFlag {
+		var v interface{}
+		if err := json.Unmarshal([]byte(jv), &v); err != nil {
+			v = jv
+		}
+		out[k] = v
+	}
+	return out
+}
+
 func buildVM() *otto.Otto {
 	vm := otto.New()
 	injectProtoSymbols(vm)
 	_, err := vm.Run(builtins)
 	kingpin.FatalIfError(err, "")
+	for k, v := range parseUserVars() {
+		err = vm.Set(k, v)
+		kingpin.FatalIfError(err, "")
+	}
 	return vm
 }
 
