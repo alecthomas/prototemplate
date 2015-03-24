@@ -25,9 +25,10 @@ var (
 	listFlag     = kingpin.Flag("list", "List builtin generators.").Dispatch(listGenerators).Bool()
 	builtinsFlag = kingpin.Flag("builtins", "List builtin functions.").Dispatch(listBuiltins).Bool()
 
-	includesFlag    = kingpin.Flag("include", "List of include paths to pass to protoc.").Short('I').PlaceHolder("DIR").Strings()
-	templateDirFlag = kingpin.Flag("templates", "Root path to templates.").Default(TemplateDir).ExistingDir()
-	outputFlag      = kingpin.Flag("output", "File to output generated template source to.").Short('o').PlaceHolder("FILE").String()
+	includesFlag         = kingpin.Flag("include", "List of include paths to pass to protoc.").Short('I').PlaceHolder("DIR").Strings()
+	templateDirFlag      = kingpin.Flag("templates", "Root path to templates.").Default(TemplateDir).ExistingDir()
+	printTemplateDirFlag = kingpin.Flag("print-template-dir", "Print default template directory.").Dispatch(printTemplateDir).Bool()
+	outputFlag           = kingpin.Flag("output", "File to output generated template source to.").Short('o').PlaceHolder("FILE").String()
 
 	sourceArg   = kingpin.Arg("proto", "Protocol buffer definition to compile.").Required().ExistingFile()
 	templateArg = kingpin.Arg("template", "Template file, or name of a builtin generator.").Required().String()
@@ -79,6 +80,12 @@ function FieldTag(f) {
 }
 `
 
+func printTemplateDir(*kingpin.ParseContext) error {
+	fmt.Println(TemplateDir)
+	os.Exit(0)
+	return nil
+}
+
 func listGenerators(*kingpin.ParseContext) error {
 	files, err := ioutil.ReadDir(TemplateDir)
 	if err != nil {
@@ -124,6 +131,11 @@ type TemplateContext struct {
 
 func main() {
 	kingpin.Parse()
+
+	if *printTemplateDirFlag {
+		fmt.Println(TemplateDir)
+		return
+	}
 
 	bareWord := filepath.Base(*templateArg) == *templateArg && filepath.Ext(*templateArg) == ""
 	if bareWord {
