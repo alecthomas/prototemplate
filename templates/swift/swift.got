@@ -63,7 +63,7 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
   }
 {{end}}\
 {{end}}
-  public init({{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
+  public {{if not (FieldsOrOneOf .Field .OneofDecl)}}required {{end}}init({{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
 {{if $index}}, {{end}}\
 {{if .Type}}\
 {{.|FieldDecl}}\
@@ -182,9 +182,11 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
       return fromCodedInputStream(input)
   }
 
+{{if FieldsOrOneOf .Field .OneofDecl}}\
   public required init() {
     fatalError("init() has not been implemented")
   }
+{{end}}\
 
   override public func isInitialized() -> Bool { return true }
 
