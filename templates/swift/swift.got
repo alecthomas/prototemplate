@@ -92,6 +92,22 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
     super.init()
   }
 
+  public func clone({{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
+{{if $index}}, {{end}}\
+{{if .Type}}\
+{{.Name|Var}}: {{.|RequiredFieldTypeDecl}}\
+{{else}}\
+{{.Name|Var}}: {{.Name|Type}}\
+{{end}}\
+? = nil{{end}}\
+) -> {{.Name}} {
+    return {{.Name}}({{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
+{{if $index}}, {{end}}
+      {{.Name|Var}}: {{.Name|Var}} ?? self.{{.Name|Var}}\
+{{end}}
+    )
+  }
+
   public class func fromCodedInputStream(input: CodedInputStream) -> {{.Name|Type}}? {
 {{range .Field}}    var {{.|OptionalFieldDecl}}
 {{end}}
