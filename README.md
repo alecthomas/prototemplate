@@ -16,10 +16,12 @@ It works in the following way:
 
 ## Why would you want to do this?
 
-If you have ever wanted to use protocol buffers for more than just the
-available code generation options. For example, another processor might be
-used to produce documentation in a custom Markdown format for your company. Or
-in a Wiki format for internal documentation.
+If you want to:
+
+- Generate custom RPC stubs from protobuf service definitions.
+- Generate documentation from your protobuf file.
+- ...
+
 
 ## Installation
 
