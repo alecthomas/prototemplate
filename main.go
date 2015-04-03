@@ -1,5 +1,8 @@
 package main
 
+// Regenerate protobuf source with:
+//   make gen
+
 import (
 	"encoding/json"
 	"fmt"
@@ -23,9 +26,6 @@ import (
 var (
 	TemplateDir = ""
 
-	listFlag     = kingpin.Flag("list", "List builtin generators.").Dispatch(listGenerators).Bool()
-	builtinsFlag = kingpin.Flag("builtins", "List builtin functions.").Dispatch(listBuiltins).Bool()
-
 	includesFlag         = kingpin.Flag("include", "List of include paths to pass to protoc.").Short('I').PlaceHolder("DIR").Strings()
 	templateDirFlag      = kingpin.Flag("templates", "Root path to templates.").Default(TemplateDir).ExistingDir()
 	printTemplateDirFlag = kingpin.Flag("print-template-dir", "Print default template directory.").Dispatch(printTemplateDir).Bool()
@@ -36,6 +36,11 @@ var (
 	templateArg = kingpin.Arg("template", "Template file, or name of a builtin generator.").Required().String()
 	scriptArg   = kingpin.Arg("script", "A JavaScript file defining template helper functions.").ExistingFile()
 )
+
+func init() {
+	kingpin.Flag("list-generators", "List builtin generators.").Dispatch(listGenerators).Bool()
+	kingpin.Flag("list-functions", "List builtin functions.").Dispatch(listBuiltins).Bool()
+}
 
 const builtins = `
 var tagTypeMap = {}
@@ -103,7 +108,7 @@ func listGenerators(*kingpin.ParseContext) error {
 }
 
 func listBuiltins(*kingpin.ParseContext) error {
-	vm := buildVM()
+	vm := buildVM(nil)
 	helpers, _ := vm.Run(`Function('return this')();`)
 	object := helpers.Object()
 	for _, name := range object.Keys() {
@@ -118,17 +123,6 @@ func listBuiltins(*kingpin.ParseContext) error {
 func isExported(name string) bool {
 	r, _ := utf8.DecodeRuneInString(name)
 	return unicode.IsUpper(r)
-}
-
-// Regenerate protobuf source with:
-// protoc --go_out=./gen -I/usr/local/Cellar/protobuf/2.6.0/include \
-//   /usr/local/Cellar/protobuf/2.6.0/include/google/protobuf/descriptor.proto
-//
-
-type TemplateContext struct {
-	FileDescriptorSet *google_protobuf.FileDescriptorSet
-	Types             map[string]int32
-	Labels            map[string]int32
 }
 
 func main() {
@@ -146,9 +140,6 @@ func main() {
 		*scriptArg = filepath.Join(*templateDirFlag, name, name+".js")
 	}
 
-	tmpl, err := template.New(filepath.Base(*templateArg)).Funcs(buildFunctions()).ParseFiles(*templateArg)
-	kingpin.FatalIfError(err, "")
-
 	cmd := exec.Command("protoc", protoArgs()...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -157,6 +148,9 @@ func main() {
 
 	pb := &google_protobuf.FileDescriptorSet{}
 	err = proto.Unmarshal(output, pb)
+	kingpin.FatalIfError(err, "")
+
+	tmpl, err := template.New(filepath.Base(*templateArg)).Funcs(buildFunctions(pb)).ParseFiles(*templateArg)
 	kingpin.FatalIfError(err, "")
 
 	var w io.WriteCloser = os.Stdout
@@ -200,10 +194,44 @@ func parseUserVars() map[string]interface{} {
 	return out
 }
 
-func buildVM() *otto.Otto {
+func toValue(vm *otto.Otto, v interface{}) otto.Value {
+	value, err := vm.ToValue(v)
+	kingpin.FatalIfError(err, "")
+	return value
+}
+
+func buildVM(pb *google_protobuf.FileDescriptorSet) *otto.Otto {
 	vm := otto.New()
+
+	err := vm.Set("FindMessage", func(call otto.FunctionCall) otto.Value {
+		name := call.Argument(0).String()
+		for _, file := range pb.File {
+			for _, typ := range file.MessageType {
+				if typ.GetName() == name {
+					return toValue(vm, typ)
+				}
+			}
+		}
+		return otto.Value{}
+	})
+
+	err = vm.Set("FindEnum", func(call otto.FunctionCall) otto.Value {
+		name := call.Argument(0).String()
+		for _, file := range pb.File {
+			for _, typ := range file.EnumType {
+				if typ.GetName() == name {
+					return toValue(vm, typ)
+				}
+			}
+		}
+		return otto.Value{}
+	})
+
+	kingpin.FatalIfError(err, "")
+
 	injectProtoSymbols(vm)
-	_, err := vm.Run(builtins)
+
+	_, err = vm.Run(builtins)
 	kingpin.FatalIfError(err, "")
 	for k, v := range parseUserVars() {
 		err = vm.Set(k, v)
@@ -214,12 +242,12 @@ func buildVM() *otto.Otto {
 
 type Func func(args ...interface{}) (interface{}, error)
 
-func buildFunctions() template.FuncMap {
+func buildFunctions(pb *google_protobuf.FileDescriptorSet) template.FuncMap {
 	funcs := template.FuncMap{}
 	if *scriptArg == "" {
 		return funcs
 	}
-	vm := buildVM()
+	vm := buildVM(pb)
 	source, err := ioutil.ReadFile(*scriptArg)
 	kingpin.FatalIfError(err, "")
 	script, err := vm.Compile(*scriptArg, source)
