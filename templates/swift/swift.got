@@ -8,8 +8,8 @@ import ProtocolBuffers
 // Extend protobuf-swift's Message to include deserialization directly, rather
 // than via a MessageBuilder.
 public protocol ProtobufMessage: Message {
-  class func fromCodedInputStream(input: CodedInputStream) -> Self?
-  class func fromData(data: NSData) -> Self?
+  static func fromCodedInputStream(input: CodedInputStream) -> Self?
+  static func fromData(data: NSData) -> Self?
 }
 
 {{with .FileDescriptorSet}}\
@@ -87,13 +87,19 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
 {{range $message.Field}}\
 {{if IsOneOfField $index .}}\
 {{if ne .GetName $field.GetName}}\
-        {{.Name}} = nil
+        {{.Name|Var}} = nil
 {{end}}\
 {{end}}\
 {{end}}\
 {{end}}\
 {{end}}\
       }
+    } else {
+{{range $field := $message.Field}}\
+{{if IsOneOfField $index .}}\
+        {{.Name|Var}} = nil
+{{end}}\
+{{end}}\
     }
 {{end}}\
     super.init()

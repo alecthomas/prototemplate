@@ -61,7 +61,7 @@ function ComputeSizeCall(f) {
   if (f.Type == Types.TYPE_ENUM)
     compute = "rawValue." + compute
   if (f.Label == Labels.LABEL_REPEATED)
-    return name + ".map({v in v." + compute + "}).reduce(0, +)"
+    return name + ".map({v in v." + compute + "}).reduce(0, combine: +)"
   return name + (f.Label == Labels.LABEL_OPTIONAL ? "!" : "") + "." + compute;
 }
 
