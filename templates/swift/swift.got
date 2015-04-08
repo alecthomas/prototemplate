@@ -84,6 +84,13 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
 {{if IsOneOfField $index .}}\
       case let .{{.Name|Type}}(v):
         {{.Name|Var}} = v
+{{range $message.Field}}\
+{{if IsOneOfField $index .}}\
+{{if ne .GetName $field.GetName}}\
+        {{.Name}} = nil
+{{end}}\
+{{end}}\
+{{end}}\
 {{end}}\
 {{end}}\
       }
