@@ -16,11 +16,10 @@ import (
 	"unicode/utf8"
 
 	"code.google.com/p/goprotobuf/proto"
-	"github.com/alecthomas/kingpin"
 	"github.com/alecthomas/otto"
 	"github.com/alecthomas/template"
-
-	"github.com/alecthomas/prototemplate/gen/google/protobuf"
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	"gopkg.in/alecthomas/kingpin.v1"
 )
 
 var (
