@@ -17,8 +17,8 @@ import (
 
 	"code.google.com/p/goprotobuf/proto"
 	"github.com/alecthomas/otto"
+	"github.com/alecthomas/prototemplate/gen/google/protobuf"
 	"github.com/alecthomas/template"
-	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"gopkg.in/alecthomas/kingpin.v1"
 )
 
