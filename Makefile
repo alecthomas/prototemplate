@@ -5,3 +5,6 @@ install:
 
 gen:
 	protoc --gogo_out=./gen -I /usr/local/Cellar/protobuf/2.6.1/include /usr/local/Cellar/protobuf/2.6.1/include/google/protobuf/descriptor.proto
+
+clean:
+	rm -f ${GOPATH}/bin/prototemplate

@@ -17,10 +17,9 @@ import (
 
 	"code.google.com/p/goprotobuf/proto"
 	"github.com/alecthomas/otto"
+	"github.com/alecthomas/prototemplate/gen/google/protobuf"
 	"github.com/alecthomas/template"
 	"gopkg.in/alecthomas/kingpin.v1"
-
-	"github.com/alecthomas/prototemplate/gen/google/protobuf"
 )
 
 var (
