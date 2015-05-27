@@ -19,7 +19,7 @@ import (
 	"github.com/alecthomas/otto"
 	"github.com/alecthomas/prototemplate/gen/google/protobuf"
 	"github.com/alecthomas/template"
-	"gopkg.in/alecthomas/kingpin.v1"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
@@ -27,7 +27,7 @@ var (
 
 	includesFlag         = kingpin.Flag("include", "List of include paths to pass to protoc.").Short('I').PlaceHolder("DIR").Strings()
 	templateDirFlag      = kingpin.Flag("templates", "Root path to templates.").Default(TemplateDir).ExistingDir()
-	printTemplateDirFlag = kingpin.Flag("print-template-dir", "Print default template directory.").Dispatch(printTemplateDir).Bool()
+	printTemplateDirFlag = kingpin.Flag("print-template-dir", "Print default template directory.").Action(printTemplateDir).Bool()
 	outputFlag           = kingpin.Flag("output", "File to output generated template source to.").Short('o').PlaceHolder("FILE").String()
 	setFlag              = kingpin.Flag("set", "Pass a variable to the JS and template context.").PlaceHolder("K=V").StringMap()
 
@@ -37,8 +37,8 @@ var (
 )
 
 func init() {
-	kingpin.Flag("list-generators", "List builtin generators.").Dispatch(listGenerators).Bool()
-	kingpin.Flag("list-functions", "List builtin functions.").Dispatch(listBuiltins).Bool()
+	kingpin.Flag("list-generators", "List builtin generators.").Action(listGenerators).Bool()
+	kingpin.Flag("list-functions", "List builtin functions.").Action(listBuiltins).Bool()
 }
 
 const builtins = `
@@ -288,15 +288,15 @@ func buildFunctions(pb *google_protobuf.FileDescriptorSet) template.FuncMap {
 func injectProtoSymbols(vm *otto.Otto) {
 	labels, _ := vm.Object("({})")
 	for name, value := range google_protobuf.FieldDescriptorProto_Label_value {
-		labels.Set(name, value)
+		_ = labels.Set(name, value)
 	}
-	vm.Set("Labels", labels)
+	_ = vm.Set("Labels", labels)
 
 	types, _ := vm.Object("({})")
 	for name, value := range google_protobuf.FieldDescriptorProto_Type_value {
-		types.Set(name, value)
+		_ = types.Set(name, value)
 	}
-	vm.Set("Types", types)
+	_ = vm.Set("Types", types)
 }
 
 // Otto does not fully support mapping Go types directly to otto.Values. This
