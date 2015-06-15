@@ -122,6 +122,7 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
   }
 
   public class func fromCodedInputStream(input: CodedInputStream) -> {{.Name|Type}}? {
+    var unknownFieldsBuilder = UnknownFieldSetBuilder();
 {{range .Field}}    var {{.|OptionalFieldDecl}}
 {{end}}
     loop: while (true) {
@@ -164,7 +165,9 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
 {{end}}\
 {{end}}
       default:
-        return nil
+        if (!unknownFieldsBuilder.mergeFieldFrom(tag, input:input)) {
+            return nil
+        }
       }
     }
 {{range .Field}}\
