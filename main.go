@@ -18,8 +18,8 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/alecthomas/otto"
 	"github.com/alecthomas/template"
+	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
-	"github.com/golang/protobuf/proto"
 )
 
 var (
@@ -30,6 +30,7 @@ var (
 	printTemplateDirFlag = kingpin.Flag("print-template-dir", "Print default template directory.").Action(printTemplateDir).Bool()
 	outputFlag           = kingpin.Flag("output", "File to output generated template source to.").Short('o').PlaceHolder("FILE").String()
 	setFlag              = kingpin.Flag("set", "Pass a variable to the JS and template context.").PlaceHolder("K=V").StringMap()
+	printContextFlag     = kingpin.Flag("print-context", "Print template context.").Bool()
 
 	sourceArg   = kingpin.Arg("proto", "Protocol buffer definition to compile.").Required().ExistingFile()
 	templateArg = kingpin.Arg("template", "Template file, or name of a builtin generator.").Required().String()
@@ -37,8 +38,8 @@ var (
 )
 
 func init() {
-	kingpin.Flag("list-generators", "List builtin generators.").Action(listGenerators).Bool()
-	kingpin.Flag("list-functions", "List builtin functions.").Action(listBuiltins).Bool()
+	kingpin.Flag("list-generators", "List builtin generators.").PreAction(listGenerators).Bool()
+	kingpin.Flag("list-functions", "List builtin functions.").PreAction(listBuiltins).Bool()
 }
 
 const builtins = `
@@ -158,8 +159,12 @@ func main() {
 		kingpin.FatalIfError(err, "")
 	}
 
-	// bytes, _ := json.MarshalIndent(pb, "", "  ")
-	// fmt.Printf("%s\n", bytes)
+	if *printContextFlag {
+		bytes, _ := json.MarshalIndent(pb, "", "  ")
+		fmt.Printf("%s\n", bytes)
+		return
+	}
+
 	context := parseUserVars()
 	context["FileDescriptorSet"] = pb
 	context["Types"] = google_protobuf.FieldDescriptorProto_Type_value
@@ -309,6 +314,9 @@ func toGenericValue(v interface{}) interface{} {
 		out := map[string]interface{}{}
 		for i := 0; i < rv.NumField(); i++ {
 			t := rv.Type().Field(i)
+			if t.PkgPath != "" {
+				continue
+			}
 			fv := rv.Field(i)
 			out[t.Name] = toGenericValue(fv.Interface())
 		}
