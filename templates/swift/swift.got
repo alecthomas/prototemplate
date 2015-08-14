@@ -219,15 +219,23 @@ size += {{.|ComputeSizeCall}};{{if .|IsOptional}} }{{end}}
 {{end}}\
     return size
   }
+
+  override public var hashValue: Int {
+    var hashCode: Int = 7
+{{range .Field}}\
+{{if .|IsRepeated}}\
+    for one{{.Name}} in {{.Name|Var}} {
+      hashCode = (hashCode &* 31) &+ one{{.Name}}.hashValue
+    }
+{{else}}\
+    {{if .|IsOptional}}if let {{.Name|Var}} = {{.Name|Var}} { {{end}}hashCode = (hashCode &* 31) &+ {{.Name|Var}}.hashValue{{if .|IsOptional}} }{{end}}
+{{end}}\
+{{end}}
+    return hashCode
+  }
 }
 
 
 {{end}}
-{{range .Service}}
-public protocol {{.Name}} {
-{{range .Method}}  func {{.Name}}(req: {{.InputType|FixRef}}) -> {{.OutputType|FixRef}}?
-{{end}}}
-{{end}}
-
 {{end}}
 {{end}}

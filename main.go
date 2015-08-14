@@ -15,11 +15,11 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/alecthomas/kingpin"
 	"github.com/alecthomas/otto"
 	"github.com/alecthomas/template"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
@@ -27,7 +27,7 @@ var (
 
 	includesFlag         = kingpin.Flag("include", "List of include paths to pass to protoc.").Short('I').PlaceHolder("DIR").Strings()
 	templateDirFlag      = kingpin.Flag("templates", "Root path to templates.").Default(TemplateDir).ExistingDir()
-	printTemplateDirFlag = kingpin.Flag("print-template-dir", "Print default template directory.").Action(printTemplateDir).Bool()
+	printTemplateDirFlag = kingpin.Flag("print-template-dir", "Print default template directory.").PreAction(printTemplateDir).Bool()
 	outputFlag           = kingpin.Flag("output", "File to output generated template source to.").Short('o').PlaceHolder("FILE").String()
 	setFlag              = kingpin.Flag("set", "Pass a variable to the JS and template context.").PlaceHolder("K=V").StringMap()
 	printContextFlag     = kingpin.Flag("print-context", "Print template context.").Bool()
