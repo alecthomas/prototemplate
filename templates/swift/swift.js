@@ -39,20 +39,19 @@ protoTypeMap[Types.TYPE_SINT32] = "SInt32";
 protoTypeMap[Types.TYPE_SINT64] = "SInt64";
 
 function FixRef(ref) {
-  return Type(ref.replace(/^.*\./, ''));
+  return Type(StripModule(ref));
 }
 
 function Type(str) {
-  return str.split(/_/g).map(function (txt) {return txt.charAt(0).toUpperCase() + txt.substr(1);}).join("")
+  return UpperCamelCase(str);
 }
 
 function Var(str) {
-  var name = Type(str);
-  return name.charAt(0).toLowerCase() + name.substr(1);
+  return LowerCamelCase(str);
 }
 
 function Const(str) {
-  return str.split(/_/g).map(function (txt) {return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();}).join("")
+  return UpperSnakeCase(str);
 }
 
 function ComputeSizeCall(f) {
@@ -80,44 +79,8 @@ function WriteFieldToOutput(f) {
   return writeToOutput(f, name);
 }
 
-function FieldsOrOneOf(fields, oneof) {
-  var out = []
-  for (var i in fields) {
-    if (fields[i].OneofIndex === undefined)
-      out.push(fields[i]);
-  }
-  for (var i in oneof) {
-    var v = oneof[i];
-    v.OneofIndex = i;
-    out.push(v);
-  }
-  return out;
-}
-
-function FieldsWithoutOneOf(fields) {
-  var out = [];
-  for (var i in fields) {
-    if (fields[i].OneofIndex === undefined)
-      out.push(fields[i]);
-  }
-  return out;
-}
-
-function OneOfFields(index, fields) {
-  var out = []
-  for (var i in fields) {
-    if (fields[i].OneofIndex === index)
-      out.push(fields[i]);
-  }
-  return out;
-}
-
 function FieldType(f) {
   return (f.Type == Types.TYPE_ENUM || f.Type == Types.TYPE_MESSAGE) ? FixRef(f.TypeName) : typeMap[f.Type];
-}
-
-function IsOneOfField(index, field) {
-  return field.OneofIndex !== undefined && index == field.OneofIndex;
 }
 
 function RequiredFieldTypeDecl(f) {

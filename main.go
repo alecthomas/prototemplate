@@ -85,6 +85,64 @@ function IsMessage(f) {
 function FieldTag(f) {
   return (f.Number << 3) | tagTypeMap[f.Type];
 }
+
+function FixRef(ref) {
+  return Type(ref.replace(/^.*\./, ''));
+}
+
+function UpperCamelCase(str) {
+  return str.split(/_/g).map(function (txt) {return txt.charAt(0).toUpperCase() + txt.substr(1);}).join("")
+}
+
+function LowerCamelCase(str) {
+  var name = UpperCamelCase(str);
+  return name.charAt(0).toLowerCase() + name.substr(1);
+}
+
+function UpperSnakeCase(str) {
+  return str.split(/_/g).map(function (txt) {return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();}).join("")
+}
+
+function StripModule(ref) {
+  return ref.replace(/^.*\./, '');
+}
+
+function FieldsOrOneOf(fields, oneof) {
+  var out = []
+  for (var i in fields) {
+    if (fields[i].OneofIndex === undefined)
+      out.push(fields[i]);
+  }
+  for (var i in oneof) {
+    var v = oneof[i];
+    v.OneofIndex = i;
+    out.push(v);
+  }
+  return out;
+}
+
+function FieldsWithoutOneOf(fields) {
+  var out = [];
+  for (var i in fields) {
+    if (fields[i].OneofIndex === undefined)
+      out.push(fields[i]);
+  }
+  return out;
+}
+
+function OneOfFields(index, fields) {
+  var out = []
+  for (var i in fields) {
+    if (fields[i].OneofIndex === index)
+      out.push(fields[i]);
+  }
+  return out;
+}
+
+function IsOneOfField(index, field) {
+  return field.OneofIndex !== undefined && index == field.OneofIndex;
+}
+
 `
 
 func printTemplateDir(*kingpin.ParseContext) error {
