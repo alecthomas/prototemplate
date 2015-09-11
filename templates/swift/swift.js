@@ -67,7 +67,7 @@ function ComputeSizeCall(f) {
 function writeToOutput(f, name) {
   if (f.Type == Types.TYPE_ENUM)
     name += ".rawValue";
-  return "output.write" + protoTypeMap[f.Type] + "(" + f.Number + ", value: " + name + ")";
+  return "try output.write" + protoTypeMap[f.Type] + "(" + f.Number + ", value: " + name + ")";
 }
 
 function WriteFieldToOutput(f) {

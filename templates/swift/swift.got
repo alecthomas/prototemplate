@@ -8,8 +8,13 @@ import ProtocolBuffers
 // Extend protobuf-swift's Message to include deserialization directly, rather
 // than via a MessageBuilder.
 public protocol ProtobufMessage: Message {
-  static func fromCodedInputStream(input: CodedInputStream) -> Self?
-  static func fromData(data: NSData) -> Self?
+  static func fromCodedInputStream(input: CodedInputStream) throws -> Self
+  static func fromData(data: NSData) throws -> Self
+}
+
+public enum ProtobufError: ErrorType {
+  case MissingRequiredField(field: String)
+  case InvalidEnumValue(field: String, value: Int32)
 }
 
 {{with .FileDescriptorSet}}\
@@ -41,7 +46,7 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
   }
 
   private class func {{.Name}}FromElements({{range $fi, $field := OneOfFields $index $message.Field}}\
-{{if $fi}}, {{end}}\
+{{if $fi}}, {{else}}{{.Name|Var}} {{end}}\
 {{.Name|Var}}: {{.|RequiredFieldTypeDecl}}? = nil{{end}}) -> {{.Name|Type}}? {
 {{range $field := OneOfFields $index $message.Field}}\
     if let v = {{.Name|Var}} { return .{{.Name|Type}}(v) }
@@ -62,10 +67,14 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
 )
   }
 {{end}}\
+{{end}}\
+{{if not .Field}}
+  public required init() {
+    super.init()
+  }
 {{end}}
-  public {{if not (FieldsOrOneOf .Field .OneofDecl)}}required {{end}}init({{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
-{{if $index}}, {{end}}\
-{{if .Type}}\
+  public {{if not (FieldsOrOneOf .Field .OneofDecl)}}required {{end}}init(unknownFields: UnknownFieldSet? = nil{{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
+, {{if .Type}}\
 {{.|FieldDecl}}\
 {{if .DefaultValue}} = {{.DefaultValue}}{{else if $field|IsOptional}}\
  = nil{{else if $field|IsRepeated}}\
@@ -114,26 +123,26 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
 {{end}}\
 ? = nil{{end}}\
 ) -> {{.Name}} {
-    return {{.Name}}({{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
-{{if $index}}, {{end}}
-      {{.Name|Var}}: {{.Name|Var}} ?? self.{{.Name|Var}}\
+    return {{.Name}}(
+      unknownFields: unknownFields{{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
+      , {{.Name|Var}}: {{.Name|Var}} ?? self.{{.Name|Var}}\
 {{end}}
     )
   }
 
-  public class func fromCodedInputStream(input: CodedInputStream) -> {{.Name|Type}}? {
-    var unknownFieldsBuilder = UnknownFieldSetBuilder();
+  public class func fromCodedInputStream(input: CodedInputStream) throws -> {{.Name|Type}} {
+    let unknownFields = UnknownFieldSet.Builder()
 {{range .Field}}    var {{.|OptionalFieldDecl}}
 {{end}}
     loop: while (true) {
-      var tag = input.readTag()
+      let tag = try input.readTag()
       switch tag {
       case 0:
         break loop
 {{range .Field}}
       case {{.|FieldTag}}:
 {{if .|IsEnum}}\
-        let n = input.readEnum()
+        let n = try input.readEnum()
         if let v = {{.TypeName|FixRef|Type}}(rawValue: n) {
 {{if .|IsRepeated}}\
           {{.Name|Var}}.append(v)
@@ -141,38 +150,33 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
           {{.Name|Var}} = v
 {{end}}\
         } else {
-          return nil
+          throw ProtobufError.InvalidEnumValue(field: "{{.Name}}", value: n)
         }
 
 {{else if .|IsMessage}}\
-        let oldLimit =  input.pushLimit(input.readRawVarint32())
-        if let v = {{.TypeName|FixRef}}.fromCodedInputStream(input) {
+        let oldLimit =  try input.pushLimit(try input.readRawVarint32())
+        let v = try {{.TypeName|FixRef}}.fromCodedInputStream(input)
 {{if .|IsRepeated}}\
-          {{.Name|Var}}.append(v)
+        {{.Name|Var}}.append(v)
 {{else}}\
-          {{.Name|Var}} = v
+        {{.Name|Var}} = v
 {{end}}\
-          input.popLimit(oldLimit)
-        } else {
-          return nil
-        }
+        input.popLimit(oldLimit)
 {{else}}\
 {{if .|IsRepeated}}\
-        {{.Name|Var}}.append(input.read{{.|TypeToProtocolBuffer}}())
+        {{.Name|Var}}.append(try input.read{{.|TypeToProtocolBuffer}}())
 {{else}}\
-        {{.Name|Var}} = input.read{{.|TypeToProtocolBuffer}}()
+        {{.Name|Var}} = try input.read{{.|TypeToProtocolBuffer}}()
 {{end}}\
 {{end}}\
 {{end}}
       default:
-        if (!unknownFieldsBuilder.mergeFieldFrom(tag, input:input)) {
-            return nil
-        }
+        try unknownFields.mergeFieldFrom(tag, input:input)
       }
     }
 {{range .Field}}\
 {{if .|IsRequired}}\
-    if {{.Name|Var}} == nil { return nil }
+    if {{.Name|Var}} == nil { throw ProtobufError.MissingRequiredField(field: "{{.Name}}") }
 {{end}}\
 {{end}}\
 {{range $index, $oneof := .OneofDecl}}\
@@ -182,9 +186,8 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
 {{end}}\)
 {{end}}\
     return {{.Name|Type}}\
-({{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
-{{if $index}}, {{end}}\
-{{if .Type}}\
+(unknownFields: try unknownFields.build(){{range $index, $field := FieldsOrOneOf .Field .OneofDecl}}\
+, {{if .Type}}\
 {{.Name|Var}}: {{.Name|Var}}\
 {{if .|IsRequired}}\!{{end}}\
 {{else}}\
@@ -193,9 +196,9 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
 {{end}})
   }
 
-  public class func fromData(data: NSData) -> {{.Name|Type}}? {
-      var input = CodedInputStream(data: data)
-      return fromCodedInputStream(input)
+  public class func fromData(data: NSData) throws -> {{.Name|Type}} {
+      let input = CodedInputStream(data: data)
+      return try fromCodedInputStream(input)
   }
 
 {{if FieldsOrOneOf .Field .OneofDecl}}\
@@ -206,21 +209,28 @@ public final class {{.Name}}: AbstractMessage, ProtobufMessage {
 
   override public func isInitialized() -> Bool { return true }
 
-  override public func writeToCodedOutputStream(output: CodedOutputStream) {
+  override public func writeToCodedOutputStream(output: CodedOutputStream) throws {
 {{range .Field}}\
     {{.|WriteFieldToOutput}}
 {{end}}  }
 
   override public func serializedSize() -> Int32 {
+{{if not .Field}}
+    return 0
+{{else}}
     var size: Int32 = 0
 {{range .Field}}\
     {{if .|IsOptional}}if {{.Name|Var}} != nil { {{end}}\
 size += {{.|ComputeSizeCall}};{{if .|IsOptional}} }{{end}}
 {{end}}\
     return size
+{{end}}
   }
 
   override public var hashValue: Int {
+{{if not .Field}}
+    return 7
+{{else}}
     var hashCode: Int = 7
 {{range .Field}}\
 {{if .|IsRepeated}}\
@@ -232,6 +242,7 @@ size += {{.|ComputeSizeCall}};{{if .|IsOptional}} }{{end}}
 {{end}}\
 {{end}}
     return hashCode
+{{end}}
   }
 }
 
